@@ -1,13 +1,19 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'dart:collection';
 import 'package:collection/collection.dart';
+import 'package:web_socket_channel/io.dart';
 //import 'dart:html' as html;
 //import 'dart:js' as js;
 import 'open_painter.dart';
 import 'corp.dart';
 import 'prop.dart';
 import 'entity.dart';
+
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:web_socket_channel/status.dart' as status;
 
 void main() {
   runApp(const MyApp());
@@ -943,6 +949,57 @@ class MyHomePageState extends State<MyHomePage> {
                           China	1.2308261804449931	-1.5268749172130052	-1.9237141329134226
                           USA	1.8293089844469304	-0.7717623199488783	-2.138559841584815
                           China	-0.11288821155156216	-2.2589706537872463	-3.0628820852038947''';
+
+    final channel = WebSocketChannel.connect(
+      Uri.parse('ws://127.0.0.1:5111'),
+    );
+    //var channel = IOWebSocketChannel(ws);
+    //channel.sink.add("hello");
+
+    channel.stream.listen((message) {
+      /*debugPrint(message);
+      debugPrint(" " + status.goingAway.toString());
+      channel.sink.add('received!');
+      channel.sink.close(status.normalClosure);*/
+      removeAll();
+      var all = message.toString();
+      listi = all
+          .split('\n')
+          .map((e) => e.trim().split('\t'))
+          .where((e) => e.length >= 4)
+          .map((e) => Entity("id", e[0], double.tryParse(e[1])!,
+              double.tryParse(e[2])!, double.tryParse(e[3])!))
+          .toList(growable: false);
+
+      for (var el in listi) {
+        String name = el.country;
+        double x = el.x;
+        double y = el.y;
+        double z = el.z;
+
+        Corp? first = components.firstWhereOrNull((el) =>
+            el.x == x * 100.0 && el.y == y * 100.0 && el.z == z * 100.0);
+        if (first != null) {
+          el.setCorp(first);
+          first.appendName(name);
+        } else {
+          Corp c = Corp.subz(name, name, x * 100.0, y * 100.0, z * 100.0);
+          if (name.startsWith("USA"))
+            c.setColor(0xff9999ff);
+          else if (name.startsWith("Spain"))
+            c.setColor(0xffffff99);
+          else if (name.startsWith("China"))
+            c.setColor(0xffff9999);
+          else if (name.startsWith("South"))
+            c.setColor(0xffff99ff);
+          else
+            c.setColor(0xffaaaaaa);
+          add(c);
+          el.setCorp(c);
+        }
+      }
+      viewlist = List<Entity>.from(listi);
+    });
 
     listi = all
         .split('\n')
